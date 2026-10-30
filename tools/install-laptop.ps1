@@ -28,6 +28,7 @@ if (-not (Test-Path (Join-Path $ffDir 'ffmpeg.exe')) -or -not (Test-Path (Join-P
         if (-not $found) { throw "FFmpeg archive does not contain $name" }
         Copy-Item -LiteralPath $found.FullName -Destination (Join-Path $ffDir $name) -Force
     }
+    Remove-Item -LiteralPath $temp -Recurse -Force -ErrorAction SilentlyContinue
 }
 $ytDir = Join-Path $target 'tools\yt-dlp'
 if (-not (Test-Path (Join-Path $ytDir 'yt-dlp.exe'))) {

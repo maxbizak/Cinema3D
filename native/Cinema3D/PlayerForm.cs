@@ -243,7 +243,8 @@ public sealed class PlayerForm : Form
                     if (lastSyncQpc == 0 || st.SyncQPCTime <= lastSyncQpc) { lastSyncQpc = st.SyncQPCTime; lastSyncRefresh = st.SyncRefreshCount; }
                     else if (st.SyncRefreshCount - lastSyncRefresh >= 120)
                     {
-                        hz = (st.SyncRefreshCount - lastSyncRefresh) * (double)Stopwatch.Frequency / (st.SyncQPCTime - lastSyncQpc);
+                        var measuredHz = (st.SyncRefreshCount - lastSyncRefresh) * (double)Stopwatch.Frequency / (st.SyncQPCTime - lastSyncQpc);
+                        if (measuredHz is >= 20 and <= 500) hz = measuredHz;
                         lastSyncQpc = st.SyncQPCTime; lastSyncRefresh = st.SyncRefreshCount;
                     }
                 }
