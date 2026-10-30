@@ -5,7 +5,8 @@ $output = Join-Path $root 'native\Cinema3D\publish'
 $target = Join-Path $root 'Cinema3D.exe'
 $portable = Join-Path $root 'development\dotnet\dotnet.exe'
 $installed = Get-Command dotnet -ErrorAction SilentlyContinue
-$dotnet = if (Test-Path $portable) { $portable } elseif ($installed) { $installed.Source } else { $null }
+$installedSdk = if ($installed) { @(& $installed.Source --list-sdks) | Where-Object { $_ -match '^10\.' } } else { @() }
+$dotnet = if (Test-Path $portable) { $portable } elseif ($installedSdk.Count -gt 0) { $installed.Source } else { $null }
 if (-not $dotnet) {
     [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
     $installer = Join-Path $env:TEMP 'cinema3d-dotnet-install.ps1'
