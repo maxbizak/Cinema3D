@@ -21,6 +21,7 @@ public sealed class ControlForm : Form
     readonly TrackBar volume = new() { Minimum = 0, Maximum = 100, TickStyle = TickStyle.None, AutoSize = false, Width = 110, Height = 28 };
     readonly System.Windows.Forms.Timer timer = new() { Interval = 300 };
     bool dragging, syncing, closingByPlayer;
+    string displayedExternalAudio;
     readonly TableLayoutPanel row1;
     readonly FlowLayoutPanel row2;
     readonly Rectangle area;
@@ -78,17 +79,15 @@ public sealed class ControlForm : Form
         row1.Controls.Add(seek, 4, 0);
         row1.Controls.Add(Btn("✕ Выход", 90, (_, _) => p.Close()), 5, 0);
 
-        // ---- строка 2: звук, формат, режим, глаза, громкость, тест ----
+        // ---- строка 2: в режиме браузера звук и воспроизведение контролирует сайт ----
         row2 = new FlowLayoutPanel { Dock = DockStyle.Fill, WrapContents = false, Padding = new Padding(6, 4, 6, 0) };
-        row2.Controls.Add(Lbl("Звук:"));
-        row2.Controls.Add(audioBox);
+        if (!p.Capturing) { row2.Controls.Add(Lbl("Дорожка:")); row2.Controls.Add(audioBox); }
         row2.Controls.Add(Lbl("Формат:"));
         row2.Controls.Add(layoutBox);
         row2.Controls.Add(Lbl("Режим:"));
         row2.Controls.Add(modeBox);
         row2.Controls.Add(swapBox);
-        row2.Controls.Add(Lbl("Громкость:"));
-        row2.Controls.Add(volume);
+        if (!p.Capturing) { row2.Controls.Add(Lbl("Громкость:")); row2.Controls.Add(volume); }
         row2.Controls.Add(Btn("Тест очков", 100, (_, _) => p.ToggleTest()));
         if (p.Capturing) row2.Controls.Add(Btn("Сбросить рамку", 130, (_, _) => p.ResetCaptureFrame()));
 
@@ -98,14 +97,19 @@ public sealed class ControlForm : Form
         foreach (var cb in new[] { audioBox, layoutBox, modeBox }) { cb.BackColor = Ctl; cb.ForeColor = Fg; cb.FlatStyle = FlatStyle.Flat; }
         foreach (var l in new[] { StereoLayout.Auto, StereoLayout.Sbs, StereoLayout.Ou, StereoLayout.Mono }) layoutBox.Items.Add(Stereo.Name(l));
         foreach (var m in new[] { OutMode.Dlp, OutMode.Mono2D, OutMode.Anaglyph }) modeBox.Items.Add(Stereo.Name(m));
+        displayedExternalAudio = p.ExternalAudio;
+        if (displayedExternalAudio != null) audioBox.Items.Add("MP3/WAV: " + Path.GetFileName(displayedExternalAudio));
         if (p.Movie != null) foreach (var a in p.Movie.Audio) audioBox.Items.Add(a.ToString());
         if (audioBox.Items.Count == 0) { audioBox.Items.Add("нет звука"); audioBox.Enabled = false; }
 
         // ---- события ----
         audioBox.SelectedIndexChanged += (_, _) =>
         {
-            if (syncing || p.Movie == null || audioBox.SelectedIndex < 0 || audioBox.SelectedIndex >= p.Movie.Audio.Count) return;
-            p.SetAudio(p.Movie.Audio[audioBox.SelectedIndex].Index);
+            if (syncing || p.Movie == null || audioBox.SelectedIndex < 0) return;
+            int offset = p.ExternalAudio != null ? 1 : 0;
+            if (audioBox.SelectedIndex < offset) return;
+            int i = audioBox.SelectedIndex - offset;
+            if (i < p.Movie.Audio.Count) p.SetAudio(p.Movie.Audio[i].Index);
         };
         layoutBox.SelectedIndexChanged += (_, _) => { if (!syncing) p.SetLayout((StereoLayout)layoutBox.SelectedIndex); };
         modeBox.SelectedIndexChanged += (_, _) => { if (!syncing) p.SetMode((OutMode)modeBox.SelectedIndex); };
@@ -201,16 +205,24 @@ public sealed class ControlForm : Form
         {
             double dur = p.Duration, pos = p.Position;
             seek.Enabled = dur > 0;
-            if (p.Capturing) timeLabel.Text = "Пауза и перемотка — в плеере сайта в браузере (▶ внизу слева, пробел, стрелки)";
+            if (p.Capturing) timeLabel.Text = "Звук и воспроизведение — в браузере";
             else if (!dragging)
             {
                 timeLabel.Text = $"{Fmt(pos)} / {Fmt(dur)}";
                 seek.Value = dur > 0 ? Math.Clamp((int)(pos / dur * 1000), 0, 1000) : 0;
             }
             playBtn.Text = p.Paused ? "▶ Играть" : "⏸ Пауза";
+            if (p.Movie != null && displayedExternalAudio != p.ExternalAudio)
+            {
+                displayedExternalAudio = p.ExternalAudio;
+                audioBox.Items.Clear();
+                if (displayedExternalAudio != null) audioBox.Items.Add("MP3/WAV: " + Path.GetFileName(displayedExternalAudio));
+                foreach (var a in p.Movie.Audio) audioBox.Items.Add(a.ToString());
+                audioBox.Enabled = audioBox.Items.Count > 1;
+            }
             if (p.Movie != null && !audioBox.DroppedDown && !audioBox.Focused)
             {
-                int i = p.Movie.Audio.FindIndex(a => a.Index == p.AudioStream);
+                int i = p.ExternalAudio != null ? 0 : p.Movie.Audio.FindIndex(a => a.Index == p.AudioStream);
                 if (i >= 0 && audioBox.SelectedIndex != i) audioBox.SelectedIndex = i;
             }
             if (!layoutBox.DroppedDown && layoutBox.SelectedIndex != (int)p.LayoutSetting) layoutBox.SelectedIndex = (int)p.LayoutSetting;

@@ -77,6 +77,9 @@ public sealed class PlayerForm : Form
     long lastAudioRetry;
     bool audioFailToast;
     long lastRetry = Environment.TickCount64;
+    string ExternalAudioFile => ms != null && ms.ExternalAudio != ""
+        ? Path.GetFullPath(Path.Combine(App.Root, ms.ExternalAudio)) : null;
+    string AvailableExternalAudio => ExternalAudioFile is string path && File.Exists(path) ? path : null;
 
     /// <summary>Временная ошибка сайта: слишком много запросов или сбой сервера — имеет смысл повторить.</summary>
     static bool IsTemporary(string err) =>
@@ -89,6 +92,7 @@ public sealed class PlayerForm : Form
         disp = Displays.PickProjector(o.Screen ?? s.Screen);
         outMode = o.Mode ?? s.OutMode; // --mode действует только на этот запуск и не сохраняется
         captureDevice = o.Capture;
+        if (captureDevice != null) layout = o.CaptureLayout ?? StereoLayout.Auto;
         test = startTest || (m == null && captureDevice == null);
         if (m != null)
         {
@@ -130,7 +134,7 @@ public sealed class PlayerForm : Form
         if (movie != null)
         {
             double start = opt.Start >= 0 ? opt.Start : (ms.Pos > 5 && ms.Pos < movie.Duration - 30 ? ms.Pos : 0);
-            session = new Session(movie, start, audioStream, settings.Volume, test);
+            session = new Session(movie, start, audioStream, settings.Volume, test, AvailableExternalAudio);
             if (start > 5) Toast("Продолжение с " + Fmt(start), 3000);
             else Toast(movie.Name, 2500);
         }
@@ -366,10 +370,14 @@ public sealed class PlayerForm : Form
                     else { a = b = captureCrop; }
                     L = new Vector4(a.X, a.Y, a.Width, a.Height);
                     R = new Vector4(b.X, b.Y, b.Width, b.Height);
-                    // пропорции глаза на экране; у Half-форматов картинка глаза сжата вдвое — возвращаем
+                    // У Half-SBS / Half-OU каждый глаз сжат в исходном кадре. Определяем
+                    // упаковку по пропорциям ВСЕЙ найденной картинки, а не одного глаза:
+                    // порог по глазу ошибочно оставлял широкоформатный Half-SBS квадратным.
                     aspect = a.Height > 0 ? a.Width * r.RgbW / (a.Height * r.RgbH) : 16f / 9;
-                    if (lay == StereoLayout.Sbs && aspect < 1.25f) aspect *= 2;
-                    if (lay == StereoLayout.Ou && aspect > 2.5f) aspect /= 2;
+                    float frameAspect = captureCrop.Height > 0
+                        ? captureCrop.Width * r.RgbW / (captureCrop.Height * r.RgbH) : 16f / 9;
+                    if (lay == StereoLayout.Sbs && frameAspect < 2.8f) aspect *= 2;
+                    if (lay == StereoLayout.Ou && frameAspect > 1.15f) aspect /= 2;
                     src = 1; content = r.CapturedFrames > 0;
                 }
                 else if (movie != null)
@@ -445,14 +453,17 @@ public sealed class PlayerForm : Form
         if (showDiag)
         {
             string time = cs != null ? $"{Fmt(cs.Now)} / {Fmt(movie.Duration)}{(cs.Paused ? "  (пауза)" : "")}" : "-";
-            string track = movie?.Audio.FirstOrDefault(a => a.Index == audioStream)?.ToString() ?? "нет";
+            string track = AvailableExternalAudio is string file ? Path.GetFileName(file)
+                : movie?.Audio.FirstOrDefault(a => a.Index == audioStream)?.ToString() ?? "нет";
             var lay = movie == null ? StereoLayout.Sbs : layout == StereoLayout.Auto ? movie.AutoLayout : layout;
             lines.Add($"Проектор: {disp.Device.Replace(@"\\.\", "")}  {hz:F2} Гц   видеокарта: {adapterName}");
             lines.Add($"Пропущено тактов: {missedLastMin} за минуту (всего {missed}),  исправлений порядка глаз: {parityFixes}");
             lines.Add($"Режим: {Stereo.Name(outMode)}   формат: {Stereo.Name(lay)}{(layout == StereoLayout.Auto ? " (авто)" : "")}   глаза: {(swapEyes ? "поменяны" : "обычно")}");
             if (movie != null)
                 lines.Add($"Время: {time}   кадров в очереди: {cs?.Video.Queued ?? 0}   звук: {track}   сдвиг звука: {settings.AvOffsetMs:+0;-0;0} мс");
-            lines.Add("Пробел пауза · ←→ ±10 с · PgUp/PgDn ±1 мин · ↑↓ громкость · S глаза · L формат · A дорожка · 1/2/3 режим · T тест · [ ] сдвиг звука · Esc выход");
+            lines.Add(captureDevice != null
+                ? "Управление видео и звуком — в браузере · S глаза · L формат · 1/2/3 режим · T тест · Esc выход"
+                : "Пробел пауза · ←→ ±10 с · PgUp/PgDn ±1 мин · ↑↓ громкость · S глаза · L формат · A дорожка · 1/2/3 режим · T тест · [ ] сдвиг звука · Esc выход");
         }
         return string.Join("\n", lines);
     }
@@ -538,7 +549,7 @@ public sealed class PlayerForm : Form
         var old = session;
         t = Math.Clamp(t, 0, Math.Max(0, movie.Duration - 1));
         bool paused = old?.Paused ?? false;
-        session = new Session(movie, t, audioStream, settings.Volume, paused);
+        session = new Session(movie, t, audioStream, settings.Volume, paused, AvailableExternalAudio);
         if (old != null) ThreadPool.QueueUserWorkItem(_ => { Thread.Sleep(300); old.Dispose(); });
     }
 
@@ -550,6 +561,7 @@ public sealed class PlayerForm : Form
     public bool Paused => session?.Paused ?? true;
     public bool TestMode => test;
     public int AudioStream => audioStream;
+    public string ExternalAudio => AvailableExternalAudio;
     public StereoLayout LayoutSetting => layout;
     public StereoLayout EffectiveLayout => layout != StereoLayout.Auto ? layout
         : movie != null ? movie.AutoLayout : captureDevice != null ? captureLayout : StereoLayout.Sbs;
@@ -585,16 +597,29 @@ public sealed class PlayerForm : Form
 
     public void SetAudio(int streamIndex)
     {
-        if (movie == null || streamIndex == audioStream || !movie.Audio.Any(a => a.Index == streamIndex)) return;
+        if (movie == null || !movie.Audio.Any(a => a.Index == streamIndex)) return;
+        if (streamIndex == audioStream && ms.ExternalAudio == "") return;
         audioStream = streamIndex;
         ms.AudioStream = streamIndex;
+        ms.ExternalAudio = "";
         Restart(session?.Now ?? 0);
         Toast("Звук: " + movie.Audio.First(a => a.Index == audioStream), 3000);
     }
 
+    public void SetExternalAudio(string path)
+    {
+        if (movie == null || movie.IsStream) return;
+        ms.ExternalAudio = path;
+        Restart(session?.Now ?? 0);
+        Toast("Звук: " + Path.GetFileName(path), 3000);
+    }
+
     public void NextAudio()
     {
-        if (movie == null || movie.Audio.Count < 2) { Toast("В фильме одна звуковая дорожка"); return; }
+        if (Capturing) return;
+        if (movie == null || movie.Audio.Count == 0) { Toast("В фильме нет встроенной звуковой дорожки"); return; }
+        if (AvailableExternalAudio != null) { SetAudio(movie.Audio[0].Index); return; }
+        if (movie.Audio.Count < 2) { Toast("В фильме одна звуковая дорожка"); return; }
         int idx = movie.Audio.FindIndex(a => a.Index == audioStream);
         SetAudio(movie.Audio[(idx + 1) % movie.Audio.Count].Index);
     }
@@ -624,6 +649,7 @@ public sealed class PlayerForm : Form
 
     public void SetVolume(float v)
     {
+        if (Capturing) return; // звук страницы воспроизводит браузер
         settings.Volume = Math.Clamp(v, 0f, 1f);
         var s = session;
         if (s != null) s.Volume = settings.Volume;
@@ -666,6 +692,7 @@ public sealed class PlayerForm : Form
             case Keys.I: showDiag = !showDiag; break;
             case Keys.OemOpenBrackets:
             case Keys.OemCloseBrackets:
+                if (Capturing) break;
                 settings.AvOffsetMs += k == Keys.OemCloseBrackets ? 20 : -20;
                 Toast($"Сдвиг звука: {settings.AvOffsetMs:+0;-0;0} мс", 1200);
                 break;

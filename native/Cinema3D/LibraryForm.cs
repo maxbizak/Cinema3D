@@ -4,6 +4,9 @@ namespace Cinema3D;
 public sealed class LibraryForm : Form
 {
     static readonly string[] Exts = { ".mkv", ".mp4", ".m4v", ".avi", ".ts", ".m2ts", ".mov", ".webm", ".wmv" };
+    static readonly Color Bg = Color.FromArgb(18, 22, 32), PanelBg = Color.FromArgb(27, 33, 46),
+        InputBg = Color.FromArgb(37, 45, 61), TextFg = Color.FromArgb(235, 239, 246),
+        Muted = Color.FromArgb(167, 180, 199), Accent = Color.FromArgb(38, 164, 156);
 
     readonly Settings settings;
     readonly ComboBox screenBox = new() { DropDownStyle = ComboBoxStyle.DropDownList, Width = 300 };
@@ -11,8 +14,9 @@ public sealed class LibraryForm : Form
     readonly RadioButton rb2d = new() { Text = "2D", AutoSize = true };
     readonly RadioButton rbAna = new() { Text = "Анаглиф", AutoSize = true };
     readonly ListView list = new() { View = View.Details, FullRowSelect = true, MultiSelect = false, HideSelection = false, Dock = DockStyle.Fill };
-    readonly ComboBox layoutBox = new() { DropDownStyle = ComboBoxStyle.DropDownList, Width = 170 };
-    readonly ComboBox audioBox = new() { DropDownStyle = ComboBoxStyle.DropDownList, Width = 300 };
+    readonly ComboBox layoutBox = new() { DropDownStyle = ComboBoxStyle.DropDownList, Width = 150 };
+    readonly ComboBox audioBox = new() { DropDownStyle = ComboBoxStyle.DropDownList, Width = 240 };
+    readonly Button audioFileBtn = Btn("Выбрать MP3/WAV…", 180);
     readonly CheckBox swapBox = new() { Text = "Поменять глаза", AutoSize = true };
     readonly Label status = new() { AutoSize = false, Dock = DockStyle.Bottom, Height = 28, Padding = new Padding(8, 6, 8, 0), ForeColor = Color.DimGray };
     readonly List<Movie> movies = new();
@@ -22,39 +26,41 @@ public sealed class LibraryForm : Form
     {
         settings = s;
         Text = "3D Кинотеатр";
-        Font = new Font("Segoe UI", 10f);
-        Size = new Size(1080, 680);
-        MinimumSize = new Size(800, 480);
+        Font = new Font("Segoe UI", 10.5f);
+        Size = new Size(1100, 700);
+        MinimumSize = new Size(1000, 520);
         StartPosition = FormStartPosition.CenterScreen;
         AllowDrop = true;
+        BackColor = Bg; ForeColor = TextFg;
         try { Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath); } catch { }
 
         // --- верх: проектор и режим ---
-        var top = new FlowLayoutPanel { Dock = DockStyle.Top, Height = 46, Padding = new Padding(8, 10, 8, 0), WrapContents = false };
+        var top = new FlowLayoutPanel { Dock = DockStyle.Top, Height = 56, Padding = new Padding(16, 12, 16, 4), WrapContents = false, BackColor = PanelBg };
         top.Controls.Add(new Label { Text = "Проектор:", AutoSize = true, Margin = new Padding(0, 4, 4, 0) });
         top.Controls.Add(screenBox);
         top.Controls.Add(new Label { Text = "   Режим:", AutoSize = true, Margin = new Padding(12, 4, 4, 0) });
         top.Controls.Add(rbDlp); top.Controls.Add(rb2d); top.Controls.Add(rbAna);
 
         // --- низ: настройки фильма и кнопки ---
-        var bottom = new TableLayoutPanel { Dock = DockStyle.Bottom, Height = 154, ColumnCount = 1, RowCount = 3, Padding = new Padding(8, 4, 8, 4) };
+        var bottom = new TableLayoutPanel { Dock = DockStyle.Bottom, Height = 166, ColumnCount = 1, RowCount = 3,
+            Padding = new Padding(16, 8, 16, 8), BackColor = PanelBg };
         var row1 = new FlowLayoutPanel { AutoSize = true, WrapContents = false };
-        row1.Controls.Add(new Label { Text = "Формат файла:", AutoSize = true, Margin = new Padding(0, 6, 4, 0) });
+        row1.Controls.Add(new Label { Text = "Фильм · формат:", AutoSize = true, Margin = new Padding(0, 6, 4, 0) });
         row1.Controls.Add(layoutBox);
-        row1.Controls.Add(new Label { Text = "  Звук:", AutoSize = true, Margin = new Padding(12, 6, 4, 0) });
+        row1.Controls.Add(new Label { Text = "Аудиодорожка фильма:", AutoSize = true, Margin = new Padding(18, 6, 4, 0) });
         row1.Controls.Add(audioBox);
         row1.Controls.Add(swapBox);
         var row2 = new FlowLayoutPanel { AutoSize = true, WrapContents = false };
-        var play = Btn("▶  Смотреть", 160, true);
+        var play = Btn("▶  Смотреть фильм", 190, true);
         var testBtn = Btn("Тест очков", 120);
         var openBtn = Btn("Открыть файл…", 140);
         var folderBtn = Btn("Папка с фильмами", 160);
         var refreshBtn = Btn("Обновить", 110);
         var urlBtn = Btn("Открыть по ссылке…", 180);
-        var capBtn = Btn("Из браузера (VK, YouTube)…", 230);
-        row2.Controls.AddRange(new Control[] { play, testBtn, openBtn, folderBtn, refreshBtn });
+        var capBtn = Btn("Браузер → проектор", 220, true);
+        row2.Controls.AddRange(new Control[] { play, openBtn, capBtn, testBtn });
         var row3 = new FlowLayoutPanel { AutoSize = true, WrapContents = false };
-        row3.Controls.AddRange(new Control[] { urlBtn, capBtn });
+        row3.Controls.AddRange(new Control[] { folderBtn, refreshBtn, urlBtn, audioFileBtn });
         capBtn.Click += (_, _) => StartCapture();
         bottom.Controls.Add(row1); bottom.Controls.Add(row2); bottom.Controls.Add(row3);
 
@@ -69,6 +75,16 @@ public sealed class LibraryForm : Form
         Controls.Add(bottom);
         Controls.Add(top);
         Controls.Add(status);
+
+        list.BackColor = Bg; list.ForeColor = TextFg; list.BorderStyle = BorderStyle.None;
+        status.BackColor = PanelBg; status.ForeColor = Muted;
+        foreach (var cb in new[] { screenBox, layoutBox, audioBox })
+        { cb.BackColor = InputBg; cb.ForeColor = TextFg; cb.FlatStyle = FlatStyle.Flat; }
+        foreach (var rb in new[] { rbDlp, rb2d, rbAna }) { rb.ForeColor = TextFg; rb.BackColor = PanelBg; }
+        swapBox.ForeColor = TextFg; swapBox.BackColor = PanelBg;
+        foreach (var panel in new[] { top, row1 })
+            foreach (Control c in panel.Controls)
+                if (c is Label label) label.ForeColor = Muted;
 
         foreach (var l in new[] { StereoLayout.Auto, StereoLayout.Sbs, StereoLayout.Ou, StereoLayout.Mono }) layoutBox.Items.Add(Stereo.Name(l));
 
@@ -89,9 +105,18 @@ public sealed class LibraryForm : Form
         };
         audioBox.SelectedIndexChanged += (_, _) =>
         {
-            if (loadingSelection || Selected is not Movie m || audioBox.SelectedIndex < 0 || audioBox.SelectedIndex >= m.Audio.Count) return;
-            settings.For(m).AudioStream = m.Audio[audioBox.SelectedIndex].Index; settings.Save();
+            if (loadingSelection || Selected is not Movie m || audioBox.SelectedIndex < 0) return;
+            var st = settings.For(m);
+            int offset = ExternalAudio(m) != null ? 1 : 0;
+            if (audioBox.SelectedIndex < offset) return;
+            int i = audioBox.SelectedIndex - offset;
+            if (i >= m.Audio.Count) return;
+            st.AudioStream = m.Audio[i].Index;
+            st.ExternalAudio = "";
+            settings.Save();
+            ShowSelection();
         };
+        audioFileBtn.Click += (_, _) => ChooseExternalAudio();
         swapBox.CheckedChanged += (_, _) =>
         {
             if (loadingSelection || Selected is not Movie m) return;
@@ -129,8 +154,11 @@ public sealed class LibraryForm : Form
 
     static Button Btn(string text, int w, bool accent = false)
     {
-        var b = new Button { Text = text, Width = w, Height = 38, Margin = new Padding(0, 6, 10, 0) };
-        if (accent) { b.BackColor = Color.FromArgb(47, 111, 219); b.ForeColor = Color.White; b.FlatStyle = FlatStyle.Flat; }
+        var b = new Button { Text = text, Width = w, Height = 38, Margin = new Padding(0, 6, 10, 0),
+            FlatStyle = FlatStyle.Flat, BackColor = accent ? Accent : InputBg, ForeColor = TextFg,
+            Cursor = Cursors.Hand };
+        b.FlatAppearance.BorderSize = 0;
+        b.FlatAppearance.MouseOverBackColor = accent ? Color.FromArgb(49, 184, 176) : Color.FromArgb(52, 63, 83);
         return b;
     }
 
@@ -158,12 +186,12 @@ public sealed class LibraryForm : Form
         if (screenBox.SelectedItem is not DisplayInfo d) return;
         if (settings.OutMode == OutMode.Dlp && d.Hz is < 110 or > 130)
         {
-            status.ForeColor = Color.Firebrick;
+            status.ForeColor = Color.FromArgb(255, 128, 128);
             status.Text = $"Проектор работает на {d.Hz} Гц. Для DLP-очков нужно 120 Гц (Параметры → Дисплей → Дополнительные параметры дисплея).";
         }
         else
         {
-            status.ForeColor = Color.DimGray;
+            status.ForeColor = Muted;
             status.Text = "Двойной щелчок по фильму — смотреть. Во время просмотра: I — диагностика, S — поменять глаза, A — звуковая дорожка, Esc — выход.";
         }
     }
@@ -216,16 +244,58 @@ public sealed class LibraryForm : Form
         try
         {
             audioBox.Items.Clear();
-            if (Selected is not Movie m) return;
+            if (Selected is not Movie m) { audioFileBtn.Enabled = false; return; }
+            audioFileBtn.Enabled = !m.IsStream;
             var st = settings.For(m);
             layoutBox.SelectedIndex = (int)st.StereoLayout;
             swapBox.Checked = st.Swap;
+            string ext = ExternalAudio(m);
+            if (ext != null) audioBox.Items.Add("MP3/WAV: " + Path.GetFileName(ext));
             foreach (var a in m.Audio) audioBox.Items.Add(a.ToString());
             int want = st.AudioStream >= 0 && m.Audio.Any(a => a.Index == st.AudioStream) ? st.AudioStream : m.DefaultAudio();
-            audioBox.SelectedIndex = m.Audio.FindIndex(a => a.Index == want);
-            audioBox.Enabled = m.Audio.Count > 1;
+            audioBox.SelectedIndex = ext != null ? 0 : m.Audio.FindIndex(a => a.Index == want);
+            audioBox.Enabled = m.Audio.Count + (ext != null ? 1 : 0) > 1;
+            audioFileBtn.Text = ext == null ? "Выбрать MP3/WAV…" : "Убрать MP3/WAV";
         }
         finally { loadingSelection = false; }
+    }
+
+    string ExternalAudio(Movie m)
+    {
+        var rel = settings.For(m).ExternalAudio;
+        if (string.IsNullOrWhiteSpace(rel)) return null;
+        var path = Path.GetFullPath(Path.Combine(App.Root, rel));
+        return File.Exists(path) ? path : null;
+    }
+
+    void ChooseExternalAudio()
+    {
+        if (Selected is not Movie m || m.IsStream) return;
+        var st = settings.For(m);
+        if (ExternalAudio(m) != null)
+        {
+            st.ExternalAudio = "";
+            settings.Save(); ShowSelection();
+            return;
+        }
+        using var dlg = new OpenFileDialog { Title = "Аудиодорожка для фильма", Filter = "MP3 или WAV|*.mp3;*.wav" };
+        if (dlg.ShowDialog(this) != DialogResult.OK) return;
+        try
+        {
+            string rel = Path.GetRelativePath(App.Root, dlg.FileName);
+            if (rel == ".." || rel.StartsWith(".." + Path.DirectorySeparatorChar) || Path.IsPathRooted(rel))
+            {
+                string dir = Path.Combine(App.Root, "movies", "audio");
+                Directory.CreateDirectory(dir);
+                string destination = Path.Combine(dir, Guid.NewGuid().ToString("N") + Path.GetExtension(dlg.FileName).ToLowerInvariant());
+                File.Copy(dlg.FileName, destination);
+                rel = Path.GetRelativePath(App.Root, destination);
+            }
+            st.ExternalAudio = rel;
+            settings.Save(); ShowSelection();
+            status.Text = "Внешняя аудиодорожка выбрана для «" + m.Name + "». Она включится при следующем запуске фильма.";
+        }
+        catch (Exception ex) { MessageBox.Show(this, "Не удалось добавить аудиодорожку: " + ex.Message, Text); }
     }
 
     static string Fmt(double s)
@@ -317,25 +387,37 @@ public sealed class LibraryForm : Form
             return;
         }
         using var f = new Form { Text = "Видео из браузера", FormBorderStyle = FormBorderStyle.FixedDialog, StartPosition = FormStartPosition.CenterParent,
-            MinimizeBox = false, MaximizeBox = false, ClientSize = new Size(620, 250), Font = Font };
-        var info = new Label { Left = 12, Top = 12, Width = 596, Height = 120, Text =
+            MinimizeBox = false, MaximizeBox = false, ClientSize = new Size(620, 292), Font = Font,
+            BackColor = PanelBg, ForeColor = TextFg };
+        var info = new Label { Left = 12, Top = 12, Width = 596, Height = 112, Text =
             "1. Откройте ролик в браузере (VK, YouTube и др.) на мониторе, выбранном ниже.\n" +
             "2. Разверните видео в браузере на весь экран (кнопка ⛶ или клавиша F) и нажмите Play.\n" +
-            "3. Программа покажет его на проекторе в 3D и сама определит формат (рядом / друг над другом).\n" +
+            "3. Программа покажет его на проекторе в выбранном ниже формате.\n" +
             "Звук идёт из браузера. Видео с защитой от записи экрана будет чёрным." };
-        var box = new ComboBox { Left = 12, Top = 140, Width = 596, DropDownStyle = ComboBoxStyle.DropDownList };
+        info.ForeColor = TextFg;
+        var box = new ComboBox { Left = 12, Top = 136, Width = 596, DropDownStyle = ComboBoxStyle.DropDownList,
+            BackColor = InputBg, ForeColor = TextFg, FlatStyle = FlatStyle.Flat };
         foreach (var d in others) box.Items.Add(d);
         box.SelectedIndex = Math.Max(0, others.FindIndex(d => d.Screen.Primary));
-        var ok = new Button { Text = "Начать", Left = 392, Top = 196, Width = 110, Height = 34, DialogResult = DialogResult.OK };
-        var cancel = new Button { Text = "Отмена", Left = 508, Top = 196, Width = 100, Height = 34, DialogResult = DialogResult.Cancel };
-        f.Controls.AddRange(new Control[] { info, box, ok, cancel });
+        var formatLabel = new Label { Text = "Формат ролика:", Left = 12, Top = 178, AutoSize = true, ForeColor = Muted };
+        var format = new ComboBox { Left = 155, Top = 174, Width = 270, DropDownStyle = ComboBoxStyle.DropDownList,
+            BackColor = InputBg, ForeColor = TextFg, FlatStyle = FlatStyle.Flat };
+        foreach (var l in new[] { StereoLayout.Auto, StereoLayout.Sbs, StereoLayout.Ou, StereoLayout.Mono }) format.Items.Add(Stereo.Name(l));
+        format.SelectedIndex = 1; // явный SBS по умолчанию, без ненадёжного распознавания половин
+        var ok = new Button { Text = "Показать на проекторе", Left = 316, Top = 240, Width = 186, Height = 34,
+            DialogResult = DialogResult.OK, FlatStyle = FlatStyle.Flat, BackColor = Accent, ForeColor = TextFg };
+        var cancel = new Button { Text = "Отмена", Left = 508, Top = 240, Width = 100, Height = 34,
+            DialogResult = DialogResult.Cancel, FlatStyle = FlatStyle.Flat, BackColor = InputBg, ForeColor = TextFg };
+        ok.FlatAppearance.BorderSize = cancel.FlatAppearance.BorderSize = 0;
+        f.Controls.AddRange(new Control[] { info, box, formatLabel, format, ok, cancel });
         f.AcceptButton = ok; f.CancelButton = cancel;
         if (f.ShowDialog(this) != DialogResult.OK || box.SelectedItem is not DisplayInfo src) return;
 
         settings.Screen = proj.Device;
         settings.Save();
         Hide();
-        using (var p = new PlayerForm(settings, null, false, new Options { Capture = src.Device, Screen = proj.Device })) p.ShowDialog();
+        using (var p = new PlayerForm(settings, null, false, new Options { Capture = src.Device, Screen = proj.Device,
+            CaptureLayout = (StereoLayout)format.SelectedIndex })) p.ShowDialog();
         settings.Save();
         Show();
         Activate();

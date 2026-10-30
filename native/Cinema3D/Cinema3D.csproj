@@ -12,7 +12,7 @@
     <ApplicationIcon>..\..\app\icon.ico</ApplicationIcon>
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
     <Product>3D Кинотеатр</Product>
-    <Version>1.0.1</Version>
+    <Version>1.0.2</Version>
     <!-- одна .exe без установки .NET -->
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <SelfContained>true</SelfContained>

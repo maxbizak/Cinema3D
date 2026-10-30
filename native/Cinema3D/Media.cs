@@ -509,7 +509,7 @@ public sealed class AudioOut : IDisposable
     public long BytesFed => Interlocked.Read(ref bytesFed);
     public string Errors { get { lock (errors) return errors.ToString(); } }
 
-    public AudioOut(Movie m, int streamIndex, double startSec)
+    public AudioOut(Movie m, int streamIndex, double startSec, string externalAudio = null)
     {
         start = startSec;
         var fmt = new WAVEFORMATEX { wFormatTag = 1, nChannels = Channels, nSamplesPerSec = Rate, nAvgBytesPerSec = Rate * BytesPerFrame,
@@ -525,9 +525,9 @@ public sealed class AudioOut : IDisposable
             waveOutPrepareHeader(hwo, hdr[i], (uint)hdrSize);
         }
         var args = new List<string> { "-hide_banner", "-loglevel", "error", "-nostdin" };
-        args.AddRange(m.InputArgs());
+        if (externalAudio == null) args.AddRange(m.InputArgs());
         if (startSec > 0.01) args.AddRange(new[] { "-ss", startSec.ToString("0.###", CultureInfo.InvariantCulture) });
-        args.AddRange(new[] { "-i", m.AudioInput, "-map", m.AudioMap(streamIndex), "-vn", "-sn", "-dn",
+        args.AddRange(new[] { "-i", externalAudio ?? m.AudioInput, "-map", externalAudio == null ? m.AudioMap(streamIndex) : "0:a:0", "-vn", "-sn", "-dn",
             "-ac", "2", "-ar", Rate.ToString(CultureInfo.InvariantCulture), "-f", "s16le", "pipe:1" });
         proc = App.Start(App.Ffmpeg, args, true);
         proc.ErrorDataReceived += (_, e) => { if (e.Data != null) lock (errors) errors.AppendLine(e.Data); };
@@ -620,6 +620,7 @@ public sealed class Session : IDisposable
     public readonly VideoDecoder Video;
     public AudioOut Audio { get; private set; }
     int audioStream;
+    readonly string externalAudio;
     float volume;
     public readonly double Start;
     readonly Stopwatch sw = new();
@@ -627,14 +628,14 @@ public sealed class Session : IDisposable
     volatile bool paused;
     public string AudioError = "";
 
-    public Session(Movie m, double start, int audioStream, float volume, bool startPaused)
+    public Session(Movie m, double start, int audioStream, float volume, bool startPaused, string externalAudio = null)
     {
         Movie = m; Start = Math.Max(0, start); paused = startPaused;
-        this.audioStream = audioStream; this.volume = volume;
+        this.audioStream = audioStream; this.volume = volume; this.externalAudio = externalAudio;
         Video = new VideoDecoder(m, Start);
-        if (audioStream >= 0)
+        if (audioStream >= 0 || externalAudio != null)
         {
-            try { Audio = new AudioOut(m, audioStream, Start) { Volume = volume }; }
+            try { Audio = new AudioOut(m, audioStream, Start, externalAudio) { Volume = volume }; }
             catch (Exception ex) { AudioError = ex.Message; }
         }
     }
@@ -697,12 +698,12 @@ public sealed class Session : IDisposable
     /// </summary>
     public void RetryAudio()
     {
-        if (!AudioFailed || audioStream < 0) return;
+        if (!AudioFailed || (audioStream < 0 && externalAudio == null)) return;
         var old = Audio;
         double at = Now;
         try
         {
-            var a = new AudioOut(Movie, audioStream, at) { Volume = volume };
+            var a = new AudioOut(Movie, audioStream, at, externalAudio) { Volume = volume };
             // пока новый звук готовится, картинка идёт по своим часам; переключаемся, когда он начал звучать
             ThreadPool.QueueUserWorkItem(_ =>
             {

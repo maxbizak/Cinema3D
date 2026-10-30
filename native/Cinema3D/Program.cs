@@ -10,6 +10,7 @@ public class Options
     public int ExitAfter;        // --exit-after N — закрыть через N секунд (для замеров)
     public double Start = -1;    // --start N — начать с секунды N
     public string Capture;       // --capture \\.\DISPLAY2 — показывать видео, идущее в браузере на этом мониторе
+    public StereoLayout? CaptureLayout; // выбранный формат видео в браузере
 
     public static Options Parse(string[] a)
     {
@@ -26,6 +27,13 @@ public class Options
                     break;
                 case "--screen": o.Screen = next(); break;
                 case "--capture": o.Capture = next(); break;
+                case "--capture-layout":
+                    o.CaptureLayout = next().ToLowerInvariant() switch
+                    {
+                        "sbs" => StereoLayout.Sbs, "ou" => StereoLayout.Ou,
+                        "2d" => StereoLayout.Mono, _ => StereoLayout.Auto
+                    };
+                    break;
                 case "--exit-after": int.TryParse(next(), out o.ExitAfter); break;
                 case "--start": double.TryParse(next(), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out o.Start); break;
                 default: // файл, перетащенный на значок, или ссылка

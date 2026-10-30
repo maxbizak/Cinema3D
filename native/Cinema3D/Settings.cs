@@ -9,6 +9,8 @@ public class MovieSettings
     public double Pos { get; set; }
     /// <summary>Номер звукового потока в файле (как у ffprobe), -1 = выбрать автоматически (русский, если есть).</summary>
     public int AudioStream { get; set; } = -1;
+    /// <summary>MP3/WAV рядом с приложением; пусто — встроенная дорожка фильма.</summary>
+    public string ExternalAudio { get; set; } = "";
 }
 
 /// <summary>Настройки рядом с программой: cinema3d-settings.json.</summary>
