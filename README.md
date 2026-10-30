@@ -16,6 +16,8 @@ For a browser video, choose **Браузер → проектор**, select the 
 
 Open `%USERPROFILE%\3D-Cinema` in Cursor. The main app is in `native\Cinema3D\*.cs`; the browser fallback is in `app\`. Close the player, edit the code, then double-click `BUILD-APP.cmd`. The script uses an installed .NET 10 SDK or downloads a local copy on first use, builds a new `Cinema3D.exe`, and saves the previous one as `Cinema3D.exe.bak`. Restart the desktop shortcut.
 
+To keep `git pull` available in Cursor, clone this repository into an empty `%USERPROFILE%\3D-Cinema` folder **before** running the release ZIP installer. The installer copies the EXE and tools into that folder and leaves `.git` intact. If an old installation already uses the folder, back up your movies and settings before replacing it.
+
 ## Limits
 
 - Windows 10/11 x64 is required. The projector, cable, graphics driver, and 120 Hz mode determine whether active glasses work.
