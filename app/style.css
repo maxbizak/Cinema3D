@@ -1,0 +1,50 @@
+html, body { margin: 0; height: 100%; background: #000; color: #eee; overflow: hidden;
+  font: 16px/1.35 "Segoe UI", Arial, sans-serif; }
+canvas#gl { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; }
+#stage { position: fixed; inset: 0; background: #000; overflow: hidden; display: none; }
+#clip { position: absolute; overflow: hidden; }
+#clip > video, #clip > canvas { position: absolute; left: 0; top: 0; transform-origin: 0 0;
+  object-fit: fill; will-change: transform; display: block; }
+body.hidecursor, body.hidecursor * { cursor: none !important; }
+
+.panel { position: fixed; background: rgba(18, 18, 22, .94); border: 1px solid #333; border-radius: 10px; }
+#menu { left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(1100px, 94vw);
+  max-height: 92vh; overflow: auto; padding: 18px 22px; box-sizing: border-box; }
+h1 { margin: 0 0 12px; font-size: 24px; } h1 .sub { font-size: 14px; color: #888; font-weight: normal; }
+.row { display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 14px; align-items: flex-end; }
+.label { font-size: 13px; color: #999; margin-bottom: 5px; }
+.seg { display: inline-flex; border: 1px solid #444; border-radius: 7px; overflow: hidden; }
+.seg button { border: 0; border-right: 1px solid #444; border-radius: 0; }
+.seg button:last-child { border-right: 0; }
+button { background: #2a2a31; color: #eee; border: 1px solid #444; border-radius: 7px; padding: 7px 12px;
+  font: inherit; font-size: 14px; cursor: pointer; }
+button:hover { background: #3a3a44; }
+button.on { background: #2f6fdb; color: #fff; }
+button.big { padding: 10px 18px; font-size: 15px; }
+#testBtn { background: #6b3fb8; }
+
+#library { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+.movie { display: flex; align-items: center; gap: 12px; padding: 9px 12px; background: #24242b; border-radius: 7px;
+  cursor: pointer; border: 1px solid transparent; }
+.movie:hover { border-color: #2f6fdb; }
+.movie .name { flex: 1; word-break: break-all; }
+.movie .meta { color: #999; font-size: 13px; white-space: nowrap; }
+.tag { font-size: 12px; padding: 2px 7px; border-radius: 5px; background: #355; white-space: nowrap; }
+.tag.warn { background: #6a4a10; }
+.hint { color: #999; font-size: 13px; }
+.keys { margin-top: 6px; }
+
+#bar { left: 50%; bottom: 16px; transform: translateX(-50%); width: min(1000px, 94vw); padding: 8px 12px;
+  display: flex; align-items: center; gap: 10px; box-sizing: border-box; }
+#bar[hidden], #menu[hidden] { display: none; }
+#seek { flex: 1; }
+#time { font-variant-numeric: tabular-nums; white-space: nowrap; }
+#badge { font-size: 12px; color: #aaa; white-space: nowrap; }
+
+#toast { position: fixed; top: 18px; left: 50%; transform: translateX(-50%); background: rgba(20,20,26,.95);
+  border: 1px solid #555; border-radius: 8px; padding: 10px 18px; font-size: 18px; }
+#hzWarn { position: fixed; top: 12px; right: 12px; max-width: 560px; background: rgba(120, 20, 20, .95);
+  border: 1px solid #f66; border-radius: 8px; padding: 10px 14px; font-size: 15px; z-index: 5; }
+#hzWarn[hidden] { display: none; }
+#diag { position: fixed; top: 10px; left: 10px; margin: 0; padding: 10px 12px; background: rgba(0,0,0,.8);
+  border: 1px solid #444; border-radius: 8px; font: 13px/1.4 Consolas, monospace; color: #cfc; }

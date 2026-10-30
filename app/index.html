@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>3D Кинотеатр</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<canvas id="gl"></canvas>
+<!-- DLP/2D: браузер сам показывает нужную половину кадра (без копирования в WebGL) -->
+<div id="stage"><div id="clip"><video id="video" playsinline preload="auto"></video></div></div>
+
+<!-- Меню / библиотека -->
+<div id="menu" class="panel">
+  <h1>3D Кинотеатр <span class="sub">Acer X1261P · DLP-Link</span></h1>
+
+  <div class="row">
+    <div class="group">
+      <div class="label">Режим вывода</div>
+      <div class="seg" id="outSeg">
+        <button data-out="dlp" title="Клавиша 1">DLP 3D (120 Гц)</button>
+        <button data-out="anaglyph" title="Клавиша 2">Анаглиф</button>
+        <button data-out="2d" title="Клавиша 3">2D (без очков)</button>
+        <button data-out="sbs" title="Клавиша 4">Как в файле</button>
+      </div>
+    </div>
+    <div class="group">
+      <div class="label">Формат файла</div>
+      <div class="seg" id="layoutSeg">
+        <button data-layout="auto">Авто</button>
+        <button data-layout="sbs">SBS (рядом)</button>
+        <button data-layout="ou">OU (сверху/снизу)</button>
+        <button data-layout="2d">2D</button>
+      </div>
+    </div>
+    <div class="group">
+      <div class="label">Глаза</div>
+      <div class="seg"><button id="swapBtn" title="Клавиша S">Поменять L/R</button></div>
+    </div>
+  </div>
+
+  <div class="row">
+    <button id="testBtn" class="big">Тест очков</button>
+    <button id="openBtn" class="big">Открыть файл…</button>
+    <button id="fsBtn" class="big">Полный экран</button>
+    <input type="file" id="fileInput" accept="video/*,.mkv" hidden>
+  </div>
+
+  <div class="label">Фильмы (папки <b>movies</b> и <b>media</b>)</div>
+  <div id="library"></div>
+  <div id="libEmpty" class="hint" hidden>Фильмов нет. Перетащите файл фильма на <b>ADD-MOVIE.cmd</b> в папке 3D-Cinema-Test и перезапустите плеер.</div>
+
+  <div class="hint keys">
+    <b>Пробел</b> пауза · <b>← →</b> ±10 с · <b>PgUp PgDn</b> ±1 мин · <b>S</b> поменять глаза · <b>1-4</b> режим ·
+    <b>T</b> тест очков · <b>I</b> диагностика · <b>M</b>/<b>Tab</b> меню · <b>F</b> полный экран · <b>↑ ↓</b> громкость ·
+    <b>P</b> лёгкий режим для слабой видеокарты
+  </div>
+</div>
+
+<!-- Нижняя панель управления -->
+<div id="bar" class="panel" hidden>
+  <button id="playBtn">⏯</button>
+  <span id="time">0:00 / 0:00</span>
+  <input id="seek" type="range" min="0" max="1000" value="0">
+  <span id="badge"></span>
+  <button id="menuBtn">Меню</button>
+</div>
+
+<div id="hzWarn" hidden>
+  Плеер получает <b><span id="hzWarnHz"></span> Гц</b>, а для DLP-очков нужно <b>120 Гц</b>.<br>
+  Сделайте проектор единственным экраном: <b>Win + P → «Только второй экран»</b>,
+  затем проверьте 120 Гц в «Параметры → Дисплей → Дополнительные параметры дисплея» и перезапустите плеер.<br>
+  <small>(Chrome/Edge синхронизируют кадры с основным дисплеем Windows.)</small>
+</div>
+<div id="toast" hidden></div>
+<pre id="diag" hidden></pre>
+
+<script src="library.js" onerror="window.LIBRARY=[]"></script>
+<script src="player.js"></script>
+</body>
+</html>
